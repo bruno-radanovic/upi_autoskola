@@ -1,0 +1,161 @@
+const express = require('express');
+const router = express.Router();
+const authenticateToken = require('./authMiddleware'); 
+
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('autoskola.db');
+
+db.serialize(() => {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS voznje(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      instruktor_email TEXT NOT NULL,
+      polaznik_email TEXT NOT NULL,
+      vrijeme_pocetka TIME NOT NULL,
+      vrijeme_zavrsetka TIME NOT NULL,
+      datum DATE NOT NULL, 
+      lokacija TEXT NOT NULL,
+      status BOOLEAN DEFAULT 0,
+      FOREIGN KEY (instruktor_email) REFERENCES instruktori(instruktori_email),
+      FOREIGN KEY (polaznik_email) REFERENCES polaznici(polaznik_email)
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Greška pri kreiranju tablice lekcija:', err.message);
+    } else {
+      console.log('Tablica voznje je kreirana.');
+    }
+  });
+});
+
+
+
+
+router.get('/', authenticateToken, (req, res) => {
+  db.all('SELECT * FROM voznje', [], (err, rows) => {
+    if (err) {
+      console.error('Greška pri dohvaćanju lekcija:', err.message);
+      res.status(500).send('Greška pri dohvaćanju lekcija: ' + err.message);
+    } else {
+      res.status(200).json(rows);
+    }
+  });
+});
+
+
+router.get('/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.get('SELECT * FROM voznje WHERE id = ?', [id], (err, row) => {
+    if (err) {
+      console.error('Greška pri dohvaćanju voznje:', err.message);
+      res.status(500).send('Greška pri dohvaćanju voznje: ' + err.message);
+    } else if (!row) {
+      res.status(404).send('Lekcija nije pronađena.');
+    } else {
+      res.status(200).json(row);
+    }
+  });
+});
+
+router.post('/', authenticateToken, (req, res) => {
+  const { instruktor_email, polaznik_email, vrijeme_pocetka, vrijeme_zavrsetka, datum, lokacija,status } = req.body;
+
+  if (!instruktor_email || !polaznik_email || !vrijeme_pocetka || !vrijeme_zavrsetka || !datum || lokacija) {
+    return res.status(400).send('Sva polja su obavezna.');
+  }
+
+  
+  db.run(`
+    INSERT INTO voznje (instruktor_email, polaznik_email, vrijeme_pocetka, vrijeme_zavrsetka, datum, lokacija,status)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `, [instruktor_email, polaznik_email, vrijeme_pocetka, vrijeme_zavrsetka, datum, lokacija,status || 0], function (err) {
+    if (err) {
+      console.error('Greška pri unosu vožnje:', err.message);
+      return res.status(500).send('Greška pri unosu vožnje: ' + err.message);
+    }
+    res.status(201).json({
+      id: this.lastID, 
+      instruktor_email, 
+      polaznik_email, 
+      vrijeme_pocetka, 
+      vrijeme_zavrsetka, 
+      datum, 
+      lokacija,
+      status
+    });
+  });
+});
+
+
+router.put('/:id', authenticateToken, (req, res) => {
+  const { id } = req.params; // 
+  const { instruktor_email, polaznik_email, vrijeme_pocetka, vrijeme_zavrsetka, datum, lokacija,status } = req.body;
+
+  const fields = [];
+  const values = [];
+  if (instruktor_email) {
+    fields.push('instruktor_email = ?');
+    values.push(instruktor_email);
+  }
+  if (polaznik_email) {
+    fields.push('polaznik_email = ?');
+    values.push(polaznik_email);
+  }
+  if (vrijeme_pocetka) {
+    fields.push('vrijeme_pocetka = ?');
+    values.push(vrijeme_pocetka);
+  }
+  if (vrijeme_zavrsetka) {
+    fields.push('vrijeme_zavrsetka = ?');
+    values.push(vrijeme_zavrsetka);
+  }
+  if (datum) {
+    fields.push('datum = ?');
+    values.push(datum);
+  }
+  if(lokacija){
+    fields.push('lokacija = ?');
+    values.push(lokacija);
+  }
+  if (status !== undefined) {
+    fields.push('status = ?');
+    values.push(status);
+  }
+
+  if (fields.length === 0) {
+    return res.status(400).send('Nijedno polje nije poslano za ažuriranje.');
+  }
+
+
+  values.push(id);
+  const sql = `UPDATE voznje SET ${fields.join(', ')} WHERE id = ?`;
+
+ 
+  db.run(sql, values, function (err) {
+    if (err) {
+      console.error('Greška pri ažuriranju vožnje:', err.message);
+      return res.status(500).send('Greška pri ažuriranju vožnje: ' + err.message);
+    } else if (this.changes === 0) {
+      return res.status(404).send('Vožnja nije pronađena.');
+    }
+
+    res.status(200).send('Vožnja je uspješno ažurirana.');
+  });
+});
+
+
+router.delete('/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.run('DELETE FROM voznje WHERE id = ?', [id], function (err) {
+    if (err) {
+      console.error('Greška pri brisanju voznje:', err.message);
+      res.status(500).send('Greška pri brisanju voznje: ' + err.message);
+    } else if (this.changes === 0) {
+      res.status(404).send('Lekcija nije pronađena.');
+    } else {
+      res.status(200).send('Lekcija je obrisana.');
+    }
+  });
+});
+
+module.exports = router;
