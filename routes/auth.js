@@ -52,7 +52,7 @@ router.post('/login', (req, res) => {
       const token = jwt.sign(
         { id: row.id, email: row.instruktor_email }, 
         SECRET_KEY, 
-        { expiresIn: '1h' }  
+        { expiresIn: '30d' }  
       );
 
       return res.status(200).json({ token });
