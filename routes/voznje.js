@@ -11,9 +11,8 @@ db.serialize(() => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       instruktor_email TEXT NOT NULL,
       polaznik_email TEXT NOT NULL,
-      vrijeme_pocetka TIME NOT NULL,
-      vrijeme_zavrsetka TIME NOT NULL,
-      datum DATE NOT NULL, 
+      termin DATETIME NOT NULL,  
+      trajanje TIME NOT NULL,   
       lokacija TEXT NOT NULL,
       status BOOLEAN DEFAULT 0,
       FOREIGN KEY (instruktor_email) REFERENCES instruktori(instruktori_email),
@@ -21,7 +20,7 @@ db.serialize(() => {
     )
   `, (err) => {
     if (err) {
-      console.error('Greška pri kreiranju tablice lekcija:', err.message);
+      console.error('Greška pri kreiranju tablice voznje:', err.message);
     } else {
       console.log('Tablica voznje je kreirana.');
     }
@@ -31,44 +30,44 @@ db.serialize(() => {
 
 
 
+
 router.get('/', authenticateToken, (req, res) => {
   db.all('SELECT * FROM voznje', [], (err, rows) => {
     if (err) {
-      console.error('Greška pri dohvaćanju lekcija:', err.message);
-      res.status(500).send('Greška pri dohvaćanju lekcija: ' + err.message);
+      console.error('Greška pri dohvaćanju vožnji:', err.message);
+      res.status(500).send('Greška pri dohvaćanju vožnji: ' + err.message);
     } else {
       res.status(200).json(rows);
     }
   });
 });
 
-
 router.get('/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
   db.get('SELECT * FROM voznje WHERE id = ?', [id], (err, row) => {
     if (err) {
-      console.error('Greška pri dohvaćanju voznje:', err.message);
-      res.status(500).send('Greška pri dohvaćanju voznje: ' + err.message);
+      console.error('Greška pri dohvaćanju vožnje:', err.message);
+      res.status(500).send('Greška pri dohvaćanju vožnje: ' + err.message);
     } else if (!row) {
-      res.status(404).send('Lekcija nije pronađena.');
+      res.status(404).send('Vožnja nije pronađena.');
     } else {
       res.status(200).json(row);
     }
   });
 });
 
-router.post('/', authenticateToken, (req, res) => {
-  const { instruktor_email, polaznik_email, vrijeme_pocetka, vrijeme_zavrsetka, datum, lokacija,status } = req.body;
 
-  if (!instruktor_email || !polaznik_email || !vrijeme_pocetka || !vrijeme_zavrsetka || !datum || lokacija) {
+router.post('/', authenticateToken, (req, res) => {
+  const { instruktor_email, polaznik_email, termin, trajanje, lokacija, status } = req.body;
+
+  if (!instruktor_email || !polaznik_email || !termin || !trajanje || !lokacija) {
     return res.status(400).send('Sva polja su obavezna.');
   }
 
-  
   db.run(`
-    INSERT INTO voznje (instruktor_email, polaznik_email, vrijeme_pocetka, vrijeme_zavrsetka, datum, lokacija,status)
+    INSERT INTO voznje (instruktor_email, polaznik_email, termin, trajanje, lokacija, status)
     VALUES (?, ?, ?, ?, ?, ?)
-  `, [instruktor_email, polaznik_email, vrijeme_pocetka, vrijeme_zavrsetka, datum, lokacija,status || 0], function (err) {
+  `, [instruktor_email, polaznik_email, termin, trajanje, lokacija, status || 0], function (err) {
     if (err) {
       console.error('Greška pri unosu vožnje:', err.message);
       return res.status(500).send('Greška pri unosu vožnje: ' + err.message);
@@ -77,9 +76,8 @@ router.post('/', authenticateToken, (req, res) => {
       id: this.lastID, 
       instruktor_email, 
       polaznik_email, 
-      vrijeme_pocetka, 
-      vrijeme_zavrsetka, 
-      datum, 
+      termin, 
+      trajanje, 
       lokacija,
       status
     });
@@ -87,12 +85,14 @@ router.post('/', authenticateToken, (req, res) => {
 });
 
 
+
 router.put('/:id', authenticateToken, (req, res) => {
-  const { id } = req.params; // 
-  const { instruktor_email, polaznik_email, vrijeme_pocetka, vrijeme_zavrsetka, datum, lokacija,status } = req.body;
+  const { id } = req.params;
+  const { instruktor_email, polaznik_email, termin, trajanje, lokacija, status } = req.body;
 
   const fields = [];
   const values = [];
+
   if (instruktor_email) {
     fields.push('instruktor_email = ?');
     values.push(instruktor_email);
@@ -101,19 +101,15 @@ router.put('/:id', authenticateToken, (req, res) => {
     fields.push('polaznik_email = ?');
     values.push(polaznik_email);
   }
-  if (vrijeme_pocetka) {
-    fields.push('vrijeme_pocetka = ?');
-    values.push(vrijeme_pocetka);
+  if (termin) {
+    fields.push('termin = ?');
+    values.push(termin);
   }
-  if (vrijeme_zavrsetka) {
-    fields.push('vrijeme_zavrsetka = ?');
-    values.push(vrijeme_zavrsetka);
+  if (trajanje) {
+    fields.push('trajanje = ?');
+    values.push(trajanje);
   }
-  if (datum) {
-    fields.push('datum = ?');
-    values.push(datum);
-  }
-  if(lokacija){
+  if (lokacija) {
     fields.push('lokacija = ?');
     values.push(lokacija);
   }
@@ -126,11 +122,9 @@ router.put('/:id', authenticateToken, (req, res) => {
     return res.status(400).send('Nijedno polje nije poslano za ažuriranje.');
   }
 
-
   values.push(id);
   const sql = `UPDATE voznje SET ${fields.join(', ')} WHERE id = ?`;
 
- 
   db.run(sql, values, function (err) {
     if (err) {
       console.error('Greška pri ažuriranju vožnje:', err.message);
@@ -142,6 +136,7 @@ router.put('/:id', authenticateToken, (req, res) => {
     res.status(200).send('Vožnja je uspješno ažurirana.');
   });
 });
+
 
 
 router.delete('/:id', authenticateToken, (req, res) => {

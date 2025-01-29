@@ -39,7 +39,7 @@ router.post('/login', (req, res) => {
         const token = jwt.sign(
           { id: row.id, email: row.polaznik_email }, 
           SECRET_KEY, 
-          { expiresIn: '1h' } //  1 sat istek
+          { expiresIn: '30d' } //  30 dana 
         );
 
         return res.status(200).json({ token });
