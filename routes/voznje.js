@@ -136,7 +136,6 @@ router.put('/:id', authenticateToken, (req, res) => {
 
     
     if (status === true) {
-      const { polaznik_email } = req.body;  
       const updatePolaznikSql = `UPDATE polaznici SET odvozeni_sati = odvozeni_sati + 1 WHERE polaznik_email = ?`;
 
       db.run(updatePolaznikSql, [polaznik_email], function (err) {
@@ -144,11 +143,10 @@ router.put('/:id', authenticateToken, (req, res) => {
           console.error('Greška pri ažuriranju odvoženih sati:', err.message);
           return res.status(500).send('Greška pri ažuriranju odvoženih sati: ' + err.message);
         }
-        res.status(200).send('Sati su povećani.');
       });
-    } else {
-      res.status(200).send('Vožnja je uspješno ažurirana.');
-    }
+    } 
+
+    res.status(200).send('Vožnja je uspješno ažurirana.');
   });
 });
 
