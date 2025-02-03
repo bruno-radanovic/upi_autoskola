@@ -151,7 +151,7 @@ router.post('/', authenticateToken, (req, res) => {
 
 router.put('/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  const { polaznik_name, polaznik_email, password, prva_pomoc, instruktor_email, odvozeni_sati } = req.body;
+  const { polaznik_name, polaznik_email, password, prva_pomoc, instruktor_email} = req.body;
 
   const fields = [];
   const values = [];
@@ -175,10 +175,6 @@ router.put('/:id', authenticateToken, (req, res) => {
   if (instruktor_email) {
     fields.push('instruktor_email = ?');
     values.push(instruktor_email);
-  }
-  if (odvozeni_sati !== undefined) {
-    fields.push('odvozeni_sati = ?');
-    values.push(odvozeni_sati);
   }
 
   if (fields.length === 0) {
